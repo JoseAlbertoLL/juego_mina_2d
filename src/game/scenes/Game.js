@@ -16,25 +16,25 @@ export class Game extends Scene {
         this.tiempoSobrevivido = 0;
         this.gameSpeed = 5; // Velocidad del desplazamiento lateral
 
-        // --- SUELO ---
-        this.suelo = this.add.rectangle(480, 500, 960, 40, 0x795548);
-        this.physics.add.existing(this.suelo, true);
-
-        // --- CARRITO (JUGADOR) ---
-        this.carrito = this.add.rectangle(200, 440, 100, 50, 0x8d6e63);
-        this.physics.add.existing(this.carrito);
-        this.carrito.body.setGravityY(1200);
-        this.carrito.body.setCollideWorldBounds(true);
-
-        // --- MINERO (VISUAL) ---
-        this.minero = this.add.rectangle(200, 395, 30, 40, 0xf5c542);
-
-        // --- GRUPOS DE OBJETOS ---
+        // --- GRUPOS ---
+        this.suelosGroup = this.physics.add.staticGroup();
         this.balasGroup = this.physics.add.group();
         this.avesGroup = this.physics.add.group();
 
+        // --- CREAR SUELO INICIAL (Bloques con huecos) ---
+        this.crearPlataformaInicial();
+
+        // --- CARRITO (JUGADOR) ---
+        this.carrito = this.add.rectangle(200, 350, 100, 50, 0x8d6e63);
+        this.physics.add.existing(this.carrito);
+        this.carrito.body.setGravityY(1200);
+        this.carrito.body.setCollideWorldBounds(false); // Desactivamos límites para permitir caer al vacío
+
+        // --- MINERO (VISUAL) ---
+        this.minero = this.add.rectangle(200, 305, 30, 40, 0xf5c542);
+
         // --- COLISIONES ---
-        this.physics.add.collider(this.carrito, this.suelo);
+        this.physics.add.collider(this.carrito, this.suelosGroup);
 
         // Colisión entre balas y aves
         this.physics.add.overlap(this.balasGroup, this.avesGroup, (bala, ave) => {
@@ -50,23 +50,20 @@ export class Game extends Scene {
             this.actualizarTextoVidas();
             
             if (this.vidas <= 0) {
-                // Calcular puntuación final y pasar a GameOver
-                const scoreFinal = Math.floor(this.tiempoSobrevivido) + this.puntosAves + (this.vidas * 200);
-                this.scene.start('GameOver', { score: scoreFinal });
+                this.terminarJuego();
             }
         });
 
-        // --- CONTROLES ---
+        // --- CONTROLES DE TECLADO ---
         this.teclas = this.input.keyboard.createCursorKeys();
-        
         this.espacio = this.input.keyboard.addKey(
             Phaser.Input.Keyboard.KeyCodes.SPACE
         );
 
-        // Tecla 'X' o 'F' para disparar el rifle
-        this.teclaDisparo = this.input.keyboard.addKey(
-            Phaser.Input.Keyboard.KeyCodes.X
-        );
+        // --- CONTROL DE RATÓN PARA DISPARAR ---
+        this.input.on('pointerdown', (pointer) => {
+            this.dispararRifle(pointer);
+        });
 
         // --- INTERFAZ (UI) ---
         this.textoUI = this.add.text(20, 20, '', {
@@ -77,15 +74,22 @@ export class Game extends Scene {
 
         // --- TEMPORIZADOR PARA SPAWN DE AVES ---
         this.time.addEvent({
-            delay: 2500, // Cada 2.5 segundos aparece un ave
+            delay: 2500,
             callback: this.lanzarAve,
+            callbackScope: this,
+            loop: true
+        });
+
+        // --- TEMPORIZADOR PARA GENERAR NUEVO SUELO CONTINUO ---
+        this.time.addEvent({
+            delay: 1500,
+            callback: this.generarBloqueSuelo,
             callbackScope: this,
             loop: true
         });
     }
 
     update(time, delta) {
-        // Aumentar tiempo de supervivencia
         this.tiempoSobrevivido += delta / 1000;
 
         // El minero sigue la posición del carrito
@@ -97,7 +101,7 @@ export class Game extends Scene {
         // Detectar si el carrito está en el suelo
         const enSuelo = this.carrito.body.blocked.down;
 
-        // Salto con ESPACIO o FLECHA ARRIBA
+        // Salto
         if (
             enSuelo &&
             (
@@ -108,33 +112,87 @@ export class Game extends Scene {
             this.carrito.body.setVelocityY(-600);
         }
 
-        // Disparar con la tecla X
-        if (Phaser.Input.Keyboard.JustDown(this.teclaDisparo)) {
-            this.dispararRifle();
+        // --- CONDICIÓN DE DERROTA POR CAÍDA EN AGUJERO ---
+        if (this.carrito.y > 600) {
+            this.terminarJuego();
         }
 
-        // Mover las aves hacia la izquierda (simulando que el jugador avanza)
-        this.avesGroup.getChildren().forEach((ave) => {
-            ave.x -= this.gameSpeed + 2;
-            if (ave.x < -50) {
-                ave.destroy(); // Limpiar aves que salen de pantalla
+        // Mover el suelo hacia la izquierda (efecto scroll)
+        this.suelosGroup.getChildren().forEach((suelo) => {
+            suelo.x -= this.gameSpeed;
+            // Actualizamos la posición física estática para que colisione bien mientras se mueve
+            suelo.body.updateFromGameObject();
+
+            if (suelo.x < -300) {
+                suelo.destroy();
             }
         });
 
-        // Actualizar UI en tiempo real
+        // Mover las aves hacia la izquierda
+        this.avesGroup.getChildren().forEach((ave) => {
+            ave.x -= this.gameSpeed + 2;
+            if (ave.x < -50) {
+                ave.destroy();
+            }
+        });
+
+        // Limpiar balas fuera de pantalla
+        this.balasGroup.getChildren().forEach((bala) => {
+            if (bala.x > 1000 || bala.x < 0 || bala.y > 600 || bala.y < 0) {
+                bala.destroy();
+            }
+        });
+
         this.actualizarTextoVidas();
     }
 
-    dispararRifle() {
-        // Creamos un rectángulo pequeño que simula la bala
-        const bala = this.add.rectangle(this.carrito.x + 60, this.carrito.y, 15, 6, 0xffff00);
+    crearPlataformaInicial() {
+        // Creamos una plataforma sólida inicial larga para que el jugador empiece seguro
+        const sueloInicial = this.add.rectangle(480, 500, 1000, 40, 0x795548);
+        this.physics.add.existing(sueloInicial, true);
+        this.suelosGroup.add(sueloInicial);
+    }
+
+    generarBloqueSuelo() {
+        // Obtenemos el último bloque de suelo creado para medir la distancia
+        const ultimoSuelo = this.suelosGroup.getChildren()[this.suelosGroup.getChildren().length - 1];
+        
+        // Si por alguna razón el grupo está vacío, salimos
+        if (!ultimoSuelo) return;
+
+        // Longitud aleatoria para el nuevo bloque (ej. entre 350px y 600px de ancho)
+        const anchoSuelo = Phaser.Math.Between(350, 600);
+        
+        // Definimos un espacio (hueco) seguro que el carrito pueda saltar con su fuerza actual (-600)
+        // Con una velocidad de scroll de 5 y un salto de 600, un hueco de entre 120px y 220px es perfecto y desafiante pero saltable.
+        const espacioAleatorio = Phaser.Math.Between(120, 220);
+
+        // La posición X se calcula sumando la mitad del último suelo, el espacio, y la mitad del nuevo suelo
+        const posX = ultimoSuelo.x + (ultimoSuelo.width / 2) + espacioAleatorio + (anchoSuelo / 2);
+        
+        const nuevoSuelo = this.add.rectangle(posX, 500, anchoSuelo, 40, 0x795548);
+        this.physics.add.existing(nuevoSuelo, true);
+        this.suelosGroup.add(nuevoSuelo);
+    }
+
+    dispararRifle(pointer) {
+        const startX = this.carrito.x;
+        const startY = this.carrito.y;
+
+        const bala = this.add.rectangle(startX, startY, 15, 6, 0xffff00);
         this.physics.add.existing(bala);
-        bala.body.setVelocityX(800); // Velocidad rápida hacia la derecha
         this.balasGroup.add(bala);
+
+        const angle = Phaser.Math.Angle.Between(startX, startY, pointer.worldX, pointer.worldY);
+        const speed = 900;
+        bala.body.setVelocity(
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed
+        );
+        bala.rotation = angle;
     }
 
     lanzarAve() {
-        // Creamos un rectángulo rojo que simula un ave enemiga volando a media altura
         const alturaAleatoria = Phaser.Math.Between(250, 400);
         const ave = this.add.rectangle(1000, alturaAleatoria, 40, 25, 0xe74c3c);
         this.physics.add.existing(ave);
@@ -145,6 +203,11 @@ export class Game extends Scene {
         this.textoUI.setText(
             `VIDAS: ${this.vidas}  |  PUNTOS AVES: ${this.puntosAves}  |  TIEMPO: ${Math.floor(this.tiempoSobrevivido)}s`
         );
+    }
+
+    terminarJuego() {
+        const scoreFinal = Math.floor(this.tiempoSobrevivido) * 10 + this.puntosAves + (this.vidas * 200);
+        this.scene.start('GameOver', { score: scoreFinal });
     }
 
 }
