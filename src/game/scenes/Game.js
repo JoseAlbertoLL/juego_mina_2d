@@ -17,21 +17,26 @@ export class Game extends Scene {
         this.gameSpeed = 5; // Velocidad del desplazamiento lateral
 
         this.alturaMaxima = 0;
-        this.sueloY = 500 - 20; // Posición Y del suelo menos la mitad del alto del carrito (40/2 = 20)
+        this.sueloY = 500 - 20;
+
+        // --- SISTEMA DE MUNICIÓN ---
+        this.municionMax = 4;
+        this.municion = 4;
+        this.reloadTimer = null; // Referencia para controlar y reiniciar el tiempo de recarga
 
         // --- GRUPOS ---
         this.suelosGroup = this.physics.add.staticGroup();
         this.balasGroup = this.physics.add.group();
         this.avesGroup = this.physics.add.group();
 
-        // --- CREAR SUELO INICIAL (Bloques con huecos) ---
+        // --- CREAR SUELO INICIAL ---
         this.crearPlataformaInicial();
 
         // --- CARRITO (JUGADOR) ---
         this.carrito = this.add.rectangle(200, 350, 100, 50, 0x8d6e63);
         this.physics.add.existing(this.carrito);
         this.carrito.body.setGravityY(1200);
-        this.carrito.body.setCollideWorldBounds(false); // Desactivamos límites para permitir caer al vacío
+        this.carrito.body.setCollideWorldBounds(false);
 
         // --- MINERO (VISUAL) ---
         this.minero = this.add.rectangle(200, 305, 30, 40, 0xf5c542);
@@ -50,7 +55,7 @@ export class Game extends Scene {
         this.physics.add.overlap(this.carrito, this.avesGroup, (carrito, ave) => {
             ave.destroy();
             this.vidas--;
-            this.actualizarTextoVidas();
+            this.actualizarTextoUI();
             
             if (this.vidas <= 0) {
                 this.terminarJuego();
@@ -73,7 +78,7 @@ export class Game extends Scene {
             fontSize: '18px',
             color: '#ffffff'
         });
-        this.actualizarTextoVidas();
+        this.actualizarTextoUI();
 
         // --- TEMPORIZADOR PARA SPAWN DE AVES ---
         this.time.addEvent({
@@ -83,7 +88,7 @@ export class Game extends Scene {
             loop: true
         });
 
-        // --- TEMPORIZADOR PARA GENERAR NUEVO SUELO CONTINUO ---
+        // --- TEMPORIZADOR PARA GENERAR NUEVO SUELO ---
         this.time.addEvent({
             delay: 1100,
             callback: this.generarBloqueSuelo,
@@ -93,10 +98,8 @@ export class Game extends Scene {
     }
 
     update(time, delta) {
-        // 1. PRIMERO declaramos la variable antes de usarla
         const enSuelo = this.carrito.body.blocked.down;
 
-        // 2. AHORA ya podemos evaluar si está en el suelo o no
         if (!enSuelo) {
             const alturaActual = Math.floor(this.sueloY - this.carrito.y);
             if (alturaActual > this.alturaMaxima) {
@@ -155,12 +158,11 @@ export class Game extends Scene {
             }
         });
 
-        this.actualizarTextoVidas();
+        this.actualizarTextoUI();
     }
 
     crearPlataformaInicial() {
-        // Creamos una plataforma sólida inicial larga para que el jugador empiece seguro
-        const sueloInicial = this.add.rectangle(950, 500, 1000, 40, 0x795548);
+        const sueloInicial = this.add.rectangle(900, 500, 1000, 40, 0x795548);
         this.physics.add.existing(sueloInicial, true);
         this.suelosGroup.add(sueloInicial);
     }
@@ -176,8 +178,6 @@ export class Game extends Scene {
 
         let posX = ultimoSuelo.x + (ultimoSuelo.width / 2) + espacioAleatorio + (anchoSuelo / 2);
 
-        // GARANTÍA: Si el último suelo está muy cerca del borde visible, 
-        // forzamos a que el nuevo suelo aparezca fuera de la pantalla (más allá de X = 1100)
         const anchoPantalla = 960;
         if (posX < anchoPantalla + 300) {
             posX = anchoPantalla + 300 + (anchoSuelo / 2);
@@ -189,6 +189,9 @@ export class Game extends Scene {
     }
 
     dispararRifle(pointer) {
+        // Si no quedan balas, no se puede disparar
+        if (this.municion <= 0) return;
+
         const startX = this.carrito.x;
         const startY = this.carrito.y;
 
@@ -203,6 +206,21 @@ export class Game extends Scene {
             Math.sin(angle) * speed
         );
         bala.rotation = angle;
+
+        // Gastamos una bala
+        this.municion--;
+
+        // SI YA HABÍA UN TEMPORIZADOR DE RECARGA ACTIVO, LO CANCELAMOS (Reinicia el tiempo)
+        if (this.reloadTimer) {
+            this.reloadTimer.remove();
+            this.reloadTimer = null;
+        }
+
+        // INICIAMOS / REINICIAMOS EL TEMPORIZADOR DE RECARGA (1.5 segundos)
+        this.reloadTimer = this.time.delayedCall(1500, () => {
+            this.municion = this.municionMax;
+            this.reloadTimer = null; // Limpiamos la referencia al terminar
+        });
     }
 
     lanzarAve() {
@@ -212,18 +230,19 @@ export class Game extends Scene {
         this.avesGroup.add(ave);
     }
 
-    /*actualizarTextoVidas() {
-        this.textoUI.setText(
-            `VIDAS: ${this.vidas}  |  PUNTOS AVES: ${this.puntosAves}  |  TIEMPO: ${Math.floor(this.tiempoSobrevivido)}s`
-        );
-    }*/
+    actualizarTextoUI() {
+        // Mostramos siempre cuántas balas quedan
+        let estadoMun = `BALAS: ${this.municion}/${this.municionMax}`;
+        
+        // Si el temporizador está activo, agregamos el aviso de recarga al lado sin ocultar las balas
+        if (this.reloadTimer) {
+            estadoMun += ` [RECARGANDO...]`;
+        }
 
-    actualizarTextoVidas() {
         this.textoUI.setText(
-            `VIDAS: ${this.vidas} | PUNTOS: ${this.puntosAves} | SALTO MÁX: ${this.alturaMaxima}px`
+            `VIDAS: ${this.vidas} | PUNTOS: ${this.puntosAves} | ${estadoMun}`
         );
-    }   
-
+    }
 
     terminarJuego() {
         const scoreFinal = Math.floor(this.tiempoSobrevivido) * 10 + this.puntosAves + (this.vidas * 200);
