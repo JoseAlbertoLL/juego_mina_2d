@@ -16,6 +16,9 @@ export class Game extends Scene {
         this.tiempoSobrevivido = 0;
         this.gameSpeed = 5; // Velocidad del desplazamiento lateral
 
+        this.alturaMaxima = 0;
+        this.sueloY = 500 - 20; // Posición Y del suelo menos la mitad del alto del carrito (40/2 = 20)
+
         // --- GRUPOS ---
         this.suelosGroup = this.physics.add.staticGroup();
         this.balasGroup = this.physics.add.group();
@@ -74,7 +77,7 @@ export class Game extends Scene {
 
         // --- TEMPORIZADOR PARA SPAWN DE AVES ---
         this.time.addEvent({
-            delay: 2500,
+            delay: 2400,
             callback: this.lanzarAve,
             callbackScope: this,
             loop: true
@@ -82,7 +85,7 @@ export class Game extends Scene {
 
         // --- TEMPORIZADOR PARA GENERAR NUEVO SUELO CONTINUO ---
         this.time.addEvent({
-            delay: 1500,
+            delay: 1100,
             callback: this.generarBloqueSuelo,
             callbackScope: this,
             loop: true
@@ -90,6 +93,19 @@ export class Game extends Scene {
     }
 
     update(time, delta) {
+        // 1. PRIMERO declaramos la variable antes de usarla
+        const enSuelo = this.carrito.body.blocked.down;
+
+        // 2. AHORA ya podemos evaluar si está en el suelo o no
+        if (!enSuelo) {
+            const alturaActual = Math.floor(this.sueloY - this.carrito.y);
+            if (alturaActual > this.alturaMaxima) {
+                this.alturaMaxima = alturaActual;
+            }
+        } else {
+            this.alturaMaxima = 0; 
+        }
+
         this.tiempoSobrevivido += delta / 1000;
 
         // El minero sigue la posición del carrito
@@ -97,9 +113,6 @@ export class Game extends Scene {
             this.carrito.x,
             this.carrito.y - 45
         );
-
-        // Detectar si el carrito está en el suelo
-        const enSuelo = this.carrito.body.blocked.down;
 
         // Salto
         if (
@@ -120,7 +133,6 @@ export class Game extends Scene {
         // Mover el suelo hacia la izquierda (efecto scroll)
         this.suelosGroup.getChildren().forEach((suelo) => {
             suelo.x -= this.gameSpeed;
-            // Actualizamos la posición física estática para que colisione bien mientras se mueve
             suelo.body.updateFromGameObject();
 
             if (suelo.x < -300) {
@@ -148,28 +160,29 @@ export class Game extends Scene {
 
     crearPlataformaInicial() {
         // Creamos una plataforma sólida inicial larga para que el jugador empiece seguro
-        const sueloInicial = this.add.rectangle(480, 500, 1000, 40, 0x795548);
+        const sueloInicial = this.add.rectangle(950, 500, 1000, 40, 0x795548);
         this.physics.add.existing(sueloInicial, true);
         this.suelosGroup.add(sueloInicial);
     }
 
     generarBloqueSuelo() {
-        // Obtenemos el último bloque de suelo creado para medir la distancia
-        const ultimoSuelo = this.suelosGroup.getChildren()[this.suelosGroup.getChildren().length - 1];
+        const suelos = this.suelosGroup.getChildren();
+        const ultimoSuelo = suelos[suelos.length - 1];
         
-        // Si por alguna razón el grupo está vacío, salimos
         if (!ultimoSuelo) return;
 
-        // Longitud aleatoria para el nuevo bloque (ej. entre 350px y 600px de ancho)
         const anchoSuelo = Phaser.Math.Between(350, 600);
-        
-        // Definimos un espacio (hueco) seguro que el carrito pueda saltar con su fuerza actual (-600)
-        // Con una velocidad de scroll de 5 y un salto de 600, un hueco de entre 120px y 220px es perfecto y desafiante pero saltable.
-        const espacioAleatorio = Phaser.Math.Between(120, 220);
+        const espacioAleatorio = Phaser.Math.Between(130, 220);
 
-        // La posición X se calcula sumando la mitad del último suelo, el espacio, y la mitad del nuevo suelo
-        const posX = ultimoSuelo.x + (ultimoSuelo.width / 2) + espacioAleatorio + (anchoSuelo / 2);
-        
+        let posX = ultimoSuelo.x + (ultimoSuelo.width / 2) + espacioAleatorio + (anchoSuelo / 2);
+
+        // GARANTÍA: Si el último suelo está muy cerca del borde visible, 
+        // forzamos a que el nuevo suelo aparezca fuera de la pantalla (más allá de X = 1100)
+        const anchoPantalla = 960;
+        if (posX < anchoPantalla + 300) {
+            posX = anchoPantalla + 300 + (anchoSuelo / 2);
+        }
+
         const nuevoSuelo = this.add.rectangle(posX, 500, anchoSuelo, 40, 0x795548);
         this.physics.add.existing(nuevoSuelo, true);
         this.suelosGroup.add(nuevoSuelo);
@@ -199,11 +212,18 @@ export class Game extends Scene {
         this.avesGroup.add(ave);
     }
 
-    actualizarTextoVidas() {
+    /*actualizarTextoVidas() {
         this.textoUI.setText(
             `VIDAS: ${this.vidas}  |  PUNTOS AVES: ${this.puntosAves}  |  TIEMPO: ${Math.floor(this.tiempoSobrevivido)}s`
         );
-    }
+    }*/
+
+    actualizarTextoVidas() {
+        this.textoUI.setText(
+            `VIDAS: ${this.vidas} | PUNTOS: ${this.puntosAves} | SALTO MÁX: ${this.alturaMaxima}px`
+        );
+    }   
+
 
     terminarJuego() {
         const scoreFinal = Math.floor(this.tiempoSobrevivido) * 10 + this.puntosAves + (this.vidas * 200);
