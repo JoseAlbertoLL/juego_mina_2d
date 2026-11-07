@@ -3,6 +3,7 @@ import { Game as MainGame } from './scenes/Game';
 import { Preloader } from './scenes/Preloader';
 import { GameOver } from './scenes/GameOver';
 import { MainMenu } from './scenes/MainMenu';
+import { Pause } from './scenes/Pause';
 import { AUTO, Game, Scale } from 'phaser';
 
 //  Find out more information about the Game Config at:
@@ -31,6 +32,7 @@ const config = {
         Preloader,
         MainMenu,
         MainGame,
+        Pause,
         GameOver
     ]
     

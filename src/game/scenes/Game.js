@@ -10,6 +10,8 @@ export class Game extends Scene {
     create() {
         this.cameras.main.setBackgroundColor(0x211c1a);
 
+        this.teclaPausa = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+
         // --- VARIABLES DE ESTADO Y JUEGO ---
         this.vidas = 3;
         this.puntosAves = 0;
@@ -126,6 +128,14 @@ export class Game extends Scene {
             )
         ) {
             this.carrito.body.setVelocityY(-600);
+        }
+
+        // Pausar el juego
+        if (Phaser.Input.Keyboard.JustDown(this.teclaPausa)) {
+            // Pausamos la ejecución física y lógica de esta escena
+            this.scene.pause('Game');
+            // Lanzamos la escena de pausa por encima
+            this.scene.launch('Pause');
         }
 
         // --- CONDICIÓN DE DERROTA POR CAÍDA EN AGUJERO ---
