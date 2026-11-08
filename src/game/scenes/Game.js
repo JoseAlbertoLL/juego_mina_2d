@@ -255,7 +255,18 @@ export class Game extends Scene {
     }
 
     terminarJuego() {
-        const scoreFinal = Math.floor(this.tiempoSobrevivido) * 10 + this.puntosAves + (this.vidas * 200);
+        // T: tiempo en segundos completos
+        const T = Math.floor(this.tiempoSobrevivido);
+        
+        // V: salud restante (vidas)
+        const V = this.vidas;
+        
+        // A: cantidad de aves neutralizadas (si cada ave da 100 puntos, dividimos entre 100 para obtener la cantidad real 'A', o creamos un contador específico 'this.avesNeutralizadas')
+        const A = this.puntosAves / 100; 
+
+        // Aplicando tu fórmula formal: (10 * T) + (100 * V) + (25 * A)
+        const scoreFinal = (10 * T) + (100 * V) + (25 * A);
+
         this.scene.start('GameOver', { score: scoreFinal });
     }
 
