@@ -1,15 +1,97 @@
-body {
+:root {
+    color-scheme: dark;
+    font-family: Arial, sans-serif;
+    background: #100f0c;
+    color: #fff2d6;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+    width: 100%;
+    min-width: 320px;
+    height: 100%;
+    min-height: 100%;
     margin: 0;
-    padding: 0;
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #000000;
+}
+
+body {
+    overflow: hidden;
+    background:
+        radial-gradient(ellipse at 50% 20%, #3b3426 0%, #211e17 58%, #100f0c 100%);
 }
 
 #app {
-    width: 100%;
-    height: 100vh;
-    overflow: hidden;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
+    padding: 18px;
+}
+
+#game-container {
+    width: min(100%, calc((100vh - 60px) * 16 / 9));
+    max-height: calc(100vh - 56px);
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid #695b3d;
+    border-radius: 12px;
+    background: #131820;
+    box-shadow: 0 24px 80px #0008;
+}
+
+#game-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+}
+
+.device-hint {
+    margin: 10px 0 0;
+    color: #8998a1;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    #app {
+        padding: 0;
+    }
+
+    #game-container {
+        width: 100%;
+        max-height: 100%;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .device-hint {
+        display: none;
+    }
+}
+
+@media (max-height: 420px) and (orientation: landscape) {
+    #app {
+        padding: 0;
+    }
+
+    #game-container {
+        width: min(100vw, calc(100vh * 16 / 9));
+        max-height: 100vh;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .device-hint {
+        display: none;
+    }
 }

@@ -1,6 +1,44 @@
-# Phaser Vite Template
+# DUSTY
 
-This is a Phaser 4 project template that uses Vite for bundling. It supports hot-reloading for quick development workflow and includes scripts to generate production-ready builds.
+Juego endless runner 2D construido con Phaser 4 y Vite. El jugador conduce una vagoneta por una mina, salta huecos y dispara a las aves.
+
+## Jugar
+
+```bash
+npm run dev
+```
+
+Ejecuta el comando desde la carpeta `front` (la carpeta padre de `juego_mina_2d`). También puedes entrar a `juego_mina_2d` y ejecutar `npm run dev-nolog`. El servidor queda disponible en `http://localhost:8080`.
+
+- **Saltar:** Espacio, flecha arriba o el botón de salto en pantalla.
+- **Disparar:** X, clic para apuntar o botón de disparo táctil.
+- **Pausar/reanudar:** P, Escape o el botón de pausa.
+- El cargador admite hasta cinco disparos y recarga una bala cada 950 ms.
+- El terreno cambia de altura y la velocidad de la vagoneta aumenta progresivamente.
+- El perfil abre la cuenta autenticada con su fecha de registro, récord e historial de partidas recientes.
+- El alias y la contraseña se actualizan usando la API de producción.
+
+El puntaje se calcula al finalizar: `10 × segundos + 100 × vidas restantes + 25 × aves derribadas`. La velocidad y la frecuencia de obstáculos/enemigos aumentan gradualmente.
+
+## API y cuentas
+
+El frontend está conectado a `https://dusty.aletra.mx`. Los módulos de `src/game/api/` manejan sesión/autenticación, perfiles, partidas, ranking y errores de API. Al iniciar una partida, el resultado se guarda en `/api/partidas` y la pantalla final consulta `/api/jugadores?page=0&size=10`.
+
+Para usar otra instancia, copia `.env.example` como `.env.local` y configura:
+
+```env
+VITE_API_BASE_URL=https://dusty.aletra.mx
+```
+
+La sesión mantiene el access token solo en memoria; el refresh token se usa exclusivamente mediante la cookie HttpOnly. El backend debe permitir por CORS el origen HTTPS donde se publica el juego y las credenciales para login/refresh/logout. Nunca se almacenan contraseñas ni tokens en `localStorage`.
+
+Para desarrollo local también debe permitirse el origen usado por Vite (por ejemplo, `http://localhost:8080`). El preflight de `OPTIONS /api/auth/login` debe responder con el origen explícito del frontend, permitir `POST`, `GET`, `PATCH`, `OPTIONS` y los encabezados `Authorization`, `Content-Type` y `Accept`, además de `Access-Control-Allow-Credentials: true`. No uses `Access-Control-Allow-Origin: *` con cookies. El 11 de noviembre de 2026 se volvió a comprobar producción: los preflight de login, refresh y las peticiones protegidas responden `200` con el origen local permitido.
+
+## Compilar
+
+```bash
+npm run build-nolog
+```
 
 **[This Template is also available as a TypeScript version.](https://github.com/phaserjs/template-vite-ts)**
 

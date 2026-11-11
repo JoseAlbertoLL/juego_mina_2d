@@ -1,5 +1,4 @@
 import { Scene } from 'phaser';
-import * as Phaser from 'phaser';
 
 export class Pause extends Scene {
     constructor() {
@@ -7,43 +6,55 @@ export class Pause extends Scene {
     }
 
     create() {
-        // Fondo semitransparente oscuro
-        const overlay = this.add.rectangle(480, 270, 960, 540, 0x000000);
-        overlay.setAlpha(0.7);
-
-        // Título de Pausa
-        this.add.text(480, 180, 'JUEGO PAUSADO', {
-            fontFamily: 'Arial Black',
-            fontSize: 42,
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 6,
-            align: 'center'
+        this.add.rectangle(480, 270, 960, 540, 0x090d11, 0.78);
+        this.add.text(480, 152, 'DUSTY', {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#f4d28d',
+            letterSpacing: 3
+        }).setOrigin(0.5);
+        this.add.text(480, 207, 'PAUSA', {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '48px',
+            fontStyle: 'bold',
+            color: '#f4d28d',
+            letterSpacing: 2
+        }).setOrigin(0.5);
+        this.add.text(480, 254, 'La mina espera. Toma aire.', {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '17px',
+            color: '#d0d9de'
         }).setOrigin(0.5);
 
-        // Texto de instrucciones
-        this.add.text(480, 280, 'Presiona [ P ] para Reanudar', {
-            fontSize: '22px',
-            color: '#cccccc',
-            align: 'center'
+        this.makeButton(480, 310, 'CONTINUAR', () => this.resumeGame(), true);
+        this.makeButton(480, 378, 'SALIR AL MENÚ', () => {
+            this.scene.stop('Game');
+            this.scene.start('MainMenu');
+        }, false);
+
+        this.input.keyboard.on('keydown-P', this.resumeGame, this);
+        this.input.keyboard.on('keydown-ESC', this.resumeGame, this);
+    }
+
+    resumeGame() {
+        this.scene.resume('Game');
+        this.scene.stop();
+    }
+
+    makeButton(x, y, label, callback, primary) {
+        const button = this.add.rectangle(x, y, 280, 50, primary ? 0xb66b3d : 0x29343b)
+            .setStrokeStyle(1, 0x859198)
+            .setInteractive({ useHandCursor: true });
+        const text = this.add.text(x, y, label, {
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '15px',
+            fontStyle: 'bold',
+            color: '#fff2d6',
+            letterSpacing: 1
         }).setOrigin(0.5);
-
-        this.add.text(480, 330, 'Presiona [ M ] para ir al Menú Principal', {
-            fontSize: '22px',
-            color: '#cccccc',
-            align: 'center'
-        }).setOrigin(0.5);
-
-        // ESCUCHADOR PARA REANUDAR CON LA TECLA 'P'
-        this.input.keyboard.once('keydown-P', () => {
-            this.scene.resume('Game'); // Reanudamos el juego
-            this.scene.stop();         // Cerramos la pausa
-        });
-
-        // ESCUCHADOR PARA IR AL MENÚ CON LA TECLA 'M'
-        this.input.keyboard.once('keydown-M', () => {
-            this.scene.stop('Game');   // Detenemos el juego de fondo
-            this.scene.start('MainMenu'); // Vamos al menú
-        });
+        button.on('pointerdown', callback);
+        button.on('pointerover', () => text.setColor('#ffe09e'));
+        button.on('pointerout', () => text.setColor('#fff2d6'));
     }
 }

@@ -3,6 +3,8 @@ import { Game as MainGame } from './scenes/Game';
 import { Preloader } from './scenes/Preloader';
 import { GameOver } from './scenes/GameOver';
 import { MainMenu } from './scenes/MainMenu';
+import { Instructions } from './scenes/Instructions';
+import { Profile } from './scenes/Profile';
 import { Pause } from './scenes/Pause';
 import { AUTO, Game, Scale } from 'phaser';
 
@@ -13,7 +15,10 @@ const config = {
     width: 960,
     height: 540,
     parent: 'game-container',
-    backgroundColor: '#211c1a',
+    backgroundColor: '#131820',
+    dom: {
+        createContainer: true
+    },
     scale: {
         mode: Scale.FIT,
         autoCenter: Scale.CENTER_BOTH
@@ -23,14 +28,15 @@ const config = {
         arcade: {
             gravity: {
                 y: 0
-            },
-            debug: true
+            }
         }
     },
     scene: [
         Boot,
         Preloader,
         MainMenu,
+        Instructions,
+        Profile,
         MainGame,
         Pause,
         GameOver
